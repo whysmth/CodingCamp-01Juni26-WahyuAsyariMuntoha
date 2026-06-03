@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +11,18 @@
 </head>
 <body>
   <div class="grain"></div>
+
+  <!-- TOOLBAR: Theme toggle + Name edit -->
+  <div class="toolbar">
+    <button class="toolbar-btn" id="btn-edit-name" title="Set your name">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span id="toolbar-name-label">Set name</span>
+    </button>
+    <button class="theme-toggle" id="btn-theme" title="Toggle light/dark mode" aria-label="Toggle theme">
+      <span class="theme-icon theme-icon--dark">☽</span>
+      <span class="theme-icon theme-icon--light">○</span>
+    </button>
+  </div>
 
   <!-- HEADER: Greeting + Clock -->
   <header class="header">
@@ -52,7 +64,16 @@
 
     <!-- TO-DO LIST -->
     <section class="card card--todo">
-      <div class="card-label">Tasks</div>
+      <div class="todo-header-row">
+        <div class="card-label" style="margin-bottom:0">Tasks</div>
+        <div class="sort-controls">
+          <span class="sort-label">Sort</span>
+          <button class="sort-btn active" data-sort="default" title="Default order">✦</button>
+          <button class="sort-btn" data-sort="az" title="A → Z">A↓</button>
+          <button class="sort-btn" data-sort="za" title="Z → A">Z↓</button>
+          <button class="sort-btn" data-sort="done" title="Done last">✓↓</button>
+        </div>
+      </div>
       <div class="todo-input-row">
         <input
           type="text"
@@ -100,6 +121,19 @@
       <div class="modal-actions">
         <button class="btn btn--ghost" id="btn-cancel-link">Cancel</button>
         <button class="btn btn--primary" id="btn-save-link">Add Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SET NAME MODAL -->
+  <div class="modal-overlay" id="name-modal" aria-hidden="true">
+    <div class="modal">
+      <h3 class="modal-title">What's your name?</h3>
+      <p class="modal-hint">Your name will appear in the greeting.</p>
+      <input type="text" class="modal-input" id="name-input" placeholder="e.g. Alex" maxlength="40" />
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="btn-cancel-name">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-name">Save</button>
       </div>
     </div>
   </div>

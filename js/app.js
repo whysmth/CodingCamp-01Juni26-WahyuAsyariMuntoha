@@ -1,7 +1,88 @@
 /* ============================================================
    FOCUS DASHBOARD — app.js
-   Handles: Clock, Timer, To-Do, Quick Links, LocalStorage
+   Features: Clock, Timer, To-Do (+ sort), Quick Links,
+             Light/Dark Mode, Custom Name
    ============================================================ */
+
+/* ──────────────────────────────────────────
+   SETTINGS  (theme + name)
+────────────────────────────────────────── */
+const SETTINGS_KEY = 'focus_settings';
+
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveSettings(obj) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj));
+}
+
+let settings = loadSettings();
+
+/* ── Theme ── */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  settings.theme = theme;
+  saveSettings(settings);
+}
+
+// Init theme (saved > system preference > dark)
+(function initTheme() {
+  const saved = settings.theme;
+  if (saved) { applyTheme(saved); return; }
+  const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  applyTheme(preferLight ? 'light' : 'dark');
+})();
+
+document.getElementById('btn-theme').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+/* ── Custom Name ── */
+const nameModal     = document.getElementById('name-modal');
+const nameInput     = document.getElementById('name-input');
+const toolbarLabel  = document.getElementById('toolbar-name-label');
+
+function getUserName() { return settings.name || ''; }
+
+function setUserName(name) {
+  settings.name = name.trim();
+  saveSettings(settings);
+  updateToolbarNameLabel();
+}
+
+function updateToolbarNameLabel() {
+  const n = getUserName();
+  toolbarLabel.textContent = n ? n : 'Set name';
+}
+
+function openNameModal() {
+  nameInput.value = getUserName();
+  nameModal.classList.add('open');
+  nameModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => nameInput.focus(), 80);
+}
+function closeNameModal() {
+  nameModal.classList.remove('open');
+  nameModal.setAttribute('aria-hidden', 'true');
+}
+
+document.getElementById('btn-edit-name').addEventListener('click', openNameModal);
+document.getElementById('btn-cancel-name').addEventListener('click', closeNameModal);
+document.getElementById('btn-save-name').addEventListener('click', () => {
+  setUserName(nameInput.value);
+  closeNameModal();
+  updateGreeting();
+});
+nameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-save-name').click();
+  if (e.key === 'Escape') closeNameModal();
+});
+nameModal.addEventListener('click', e => { if (e.target === nameModal) closeNameModal(); });
+
+updateToolbarNameLabel();
+
 
 /* ──────────────────────────────────────────
    1. CLOCK & GREETING
@@ -9,11 +90,24 @@
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+function getGreetingBase() {
+  const hour = new Date().getHours();
+  if (hour >= 5  && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function updateGreeting() {
+  const base = getGreetingBase();
+  const name = getUserName();
+  document.getElementById('greeting').textContent = name ? `${base}, ${name}` : base;
+}
+
 function updateClock() {
-  const now  = new Date();
-  const h    = String(now.getHours()).padStart(2, '0');
-  const m    = String(now.getMinutes()).padStart(2, '0');
-  const s    = String(now.getSeconds()).padStart(2, '0');
+  const now = new Date();
+  const h   = String(now.getHours()).padStart(2, '0');
+  const m   = String(now.getMinutes()).padStart(2, '0');
+  const s   = String(now.getSeconds()).padStart(2, '0');
 
   document.getElementById('clock').textContent         = `${h}:${m}`;
   document.getElementById('clock-seconds').textContent = s;
@@ -24,11 +118,7 @@ function updateClock() {
   const year  = now.getFullYear();
   document.getElementById('date-display').textContent  = `${day}, ${date} ${month} ${year}`;
 
-  const hour = now.getHours();
-  let greeting = 'Good evening';
-  if (hour >= 5  && hour < 12) greeting = 'Good morning';
-  else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
-  document.getElementById('greeting').textContent = greeting;
+  updateGreeting();
 }
 
 setInterval(updateClock, 1000);
@@ -38,29 +128,25 @@ updateClock();
 /* ──────────────────────────────────────────
    2. FOCUS TIMER
 ────────────────────────────────────────── */
-const RING_CIRC = 2 * Math.PI * 88; // ~552.92
+const RING_CIRC = 2 * Math.PI * 88;
 
-let timerTotal    = 25 * 60; // seconds
+let timerTotal    = 25 * 60;
 let timerLeft     = timerTotal;
 let timerRunning  = false;
 let timerInterval = null;
 
-const displayEl  = document.getElementById('timer-display');
-const statusEl   = document.getElementById('timer-status');
-const ringEl     = document.getElementById('ring-progress');
-const btnStart   = document.getElementById('btn-start');
-const btnReset   = document.getElementById('btn-reset');
+const displayEl = document.getElementById('timer-display');
+const statusEl  = document.getElementById('timer-status');
+const ringEl    = document.getElementById('ring-progress');
+const btnStart  = document.getElementById('btn-start');
+const btnReset  = document.getElementById('btn-reset');
 
 function formatTime(s) {
-  const mm = String(Math.floor(s / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
+  return `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
 }
 
 function updateRing() {
-  const progress = timerLeft / timerTotal;
-  const offset   = RING_CIRC * (1 - progress);
-  ringEl.style.strokeDashoffset = offset;
+  ringEl.style.strokeDashoffset = RING_CIRC * (1 - timerLeft / timerTotal);
 }
 
 function setTimerState(state) {
@@ -79,7 +165,6 @@ function startTimer() {
     timerLeft--;
     displayEl.textContent = formatTime(timerLeft);
     updateRing();
-
     if (timerLeft <= 0) {
       clearInterval(timerInterval);
       timerRunning = false;
@@ -117,17 +202,13 @@ function notifyDone() {
   }
 }
 
-btnStart.addEventListener('click', () => {
-  timerRunning ? pauseTimer() : startTimer();
-});
+btnStart.addEventListener('click', () => { timerRunning ? pauseTimer() : startTimer(); });
 btnReset.addEventListener('click', resetTimer);
 
-// Preset buttons
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (timerRunning) pauseTimer();
-    const mins = parseInt(btn.dataset.minutes, 10);
-    timerTotal = mins * 60;
+    timerTotal = parseInt(btn.dataset.minutes, 10) * 60;
     timerLeft  = timerTotal;
     displayEl.textContent = formatTime(timerLeft);
     statusEl.textContent = 'Ready';
@@ -139,45 +220,50 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
   });
 });
 
-// Init ring
 updateRing();
 
-// Request notification permission quietly
 if ('Notification' in window && Notification.permission === 'default') {
   Notification.requestPermission();
 }
 
 
 /* ──────────────────────────────────────────
-   3. TO-DO LIST
+   3. TO-DO LIST  (with sort)
 ────────────────────────────────────────── */
-const TODO_KEY = 'focus_todos';
+const TODO_KEY  = 'focus_todos';
+const SORT_KEY  = 'focus_sort';
 
-let todos = loadTodos();
+let todos     = loadTodos();
 let editingId = null;
+let sortMode  = localStorage.getItem(SORT_KEY) || 'default';
 
 function loadTodos() {
-  try {
-    return JSON.parse(localStorage.getItem(TODO_KEY)) || [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(TODO_KEY)) || []; }
+  catch { return []; }
 }
-
-function saveTodos() {
-  localStorage.setItem(TODO_KEY, JSON.stringify(todos));
-}
+function saveTodos() { localStorage.setItem(TODO_KEY, JSON.stringify(todos)); }
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+function getSortedTodos() {
+  const copy = [...todos];
+  if (sortMode === 'az')   return copy.sort((a,b) => a.text.localeCompare(b.text));
+  if (sortMode === 'za')   return copy.sort((a,b) => b.text.localeCompare(a.text));
+  if (sortMode === 'done') return copy.sort((a,b) => Number(a.done) - Number(b.done));
+  return copy; // 'default' = insertion order
+}
+
 function renderTodos() {
-  const list = document.getElementById('todo-list');
+  const list    = document.getElementById('todo-list');
+  const sorted  = getSortedTodos();
   list.innerHTML = '';
 
-  if (todos.length === 0) {
+  if (sorted.length === 0) {
     list.innerHTML = `<div class="empty-state"><span>✦</span>No tasks yet. Add one above.</div>`;
   } else {
-    todos.forEach(todo => {
+    sorted.forEach(todo => {
       const li = document.createElement('li');
       li.className = `todo-item${todo.done ? ' done' : ''}`;
       li.dataset.id = todo.id;
@@ -185,48 +271,40 @@ function renderTodos() {
         <button class="todo-check" aria-label="Toggle done"></button>
         <span class="todo-text">${escapeHtml(todo.text)}</span>
         <div class="todo-actions">
-          <button class="icon-btn edit" aria-label="Edit" title="Edit">✎</button>
+          <button class="icon-btn edit"   aria-label="Edit"   title="Edit">✎</button>
           <button class="icon-btn delete" aria-label="Delete" title="Delete">✕</button>
         </div>`;
-
-      // Toggle done
       li.querySelector('.todo-check').addEventListener('click', () => toggleTodo(todo.id));
-      // Edit
-      li.querySelector('.icon-btn.edit').addEventListener('click', () => openEditModal(todo.id));
-      // Delete
+      li.querySelector('.icon-btn.edit').addEventListener('click',   () => openEditModal(todo.id));
       li.querySelector('.icon-btn.delete').addEventListener('click', () => deleteTodo(todo.id));
-
       list.appendChild(li);
     });
   }
-
   updateTodoCount();
 }
 
 function updateTodoCount() {
-  const total  = todos.length;
-  const done   = todos.filter(t => t.done).length;
-  const countEl = document.getElementById('todo-count');
-  countEl.textContent = total === 0 ? '0 tasks' : `${done}/${total} done`;
+  const total = todos.length;
+  const done  = todos.filter(t => t.done).length;
+  document.getElementById('todo-count').textContent =
+    total === 0 ? '0 tasks' : `${done}/${total} done`;
 }
 
 function addTodo(text) {
   text = text.trim();
   if (!text) return;
   todos.unshift({ id: generateId(), text, done: false });
-  saveTodos();
-  renderTodos();
+  saveTodos(); renderTodos();
 }
 
 function toggleTodo(id) {
-  const todo = todos.find(t => t.id === id);
-  if (todo) { todo.done = !todo.done; saveTodos(); renderTodos(); }
+  const t = todos.find(t => t.id === id);
+  if (t) { t.done = !t.done; saveTodos(); renderTodos(); }
 }
 
 function deleteTodo(id) {
   todos = todos.filter(t => t.id !== id);
-  saveTodos();
-  renderTodos();
+  saveTodos(); renderTodos();
 }
 
 function escapeHtml(str) {
@@ -236,8 +314,7 @@ function escapeHtml(str) {
 // Add task
 const todoInput = document.getElementById('todo-input');
 document.getElementById('btn-add-task').addEventListener('click', () => {
-  addTodo(todoInput.value);
-  todoInput.value = '';
+  addTodo(todoInput.value); todoInput.value = '';
 });
 todoInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') { addTodo(todoInput.value); todoInput.value = ''; }
@@ -246,13 +323,30 @@ todoInput.addEventListener('keydown', e => {
 // Clear done
 document.getElementById('btn-clear-done').addEventListener('click', () => {
   todos = todos.filter(t => !t.done);
-  saveTodos();
-  renderTodos();
+  saveTodos(); renderTodos();
 });
 
+// Sort buttons
+function applySortUI() {
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.sort === sortMode);
+  });
+}
+
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sortMode = btn.dataset.sort;
+    localStorage.setItem(SORT_KEY, sortMode);
+    applySortUI();
+    renderTodos();
+  });
+});
+
+applySortUI();
+
 // Edit modal
-const editModal      = document.getElementById('edit-modal');
-const editTaskInput  = document.getElementById('edit-task-input');
+const editModal     = document.getElementById('edit-modal');
+const editTaskInput = document.getElementById('edit-task-input');
 
 function openEditModal(id) {
   const todo = todos.find(t => t.id === id);
@@ -261,9 +355,8 @@ function openEditModal(id) {
   editTaskInput.value = todo.text;
   editModal.classList.add('open');
   editModal.setAttribute('aria-hidden', 'false');
-  setTimeout(() => editTaskInput.focus(), 100);
+  setTimeout(() => editTaskInput.focus(), 80);
 }
-
 function closeEditModal() {
   editModal.classList.remove('open');
   editModal.setAttribute('aria-hidden', 'true');
@@ -291,27 +384,21 @@ renderTodos();
    4. QUICK LINKS
 ────────────────────────────────────────── */
 const LINKS_KEY = 'focus_links';
-
 let links = loadLinks();
 
 function loadLinks() {
-  try {
-    return JSON.parse(localStorage.getItem(LINKS_KEY)) || getDefaultLinks();
-  } catch { return getDefaultLinks(); }
+  try { return JSON.parse(localStorage.getItem(LINKS_KEY)) || getDefaultLinks(); }
+  catch { return getDefaultLinks(); }
 }
-
 function getDefaultLinks() {
   return [
-    { id: generateId(), name: 'Google',   url: 'https://google.com'   },
-    { id: generateId(), name: 'Gmail',    url: 'https://gmail.com'    },
-    { id: generateId(), name: 'YouTube',  url: 'https://youtube.com'  },
-    { id: generateId(), name: 'GitHub',   url: 'https://github.com'   },
+    { id: generateId(), name: 'Google',  url: 'https://google.com'  },
+    { id: generateId(), name: 'Gmail',   url: 'https://gmail.com'   },
+    { id: generateId(), name: 'YouTube', url: 'https://youtube.com' },
+    { id: generateId(), name: 'GitHub',  url: 'https://github.com'  },
   ];
 }
-
-function saveLinks() {
-  localStorage.setItem(LINKS_KEY, JSON.stringify(links));
-}
+function saveLinks() { localStorage.setItem(LINKS_KEY, JSON.stringify(links)); }
 
 function getFaviconUrl(url) {
   try {
@@ -323,15 +410,12 @@ function getFaviconUrl(url) {
 function renderLinks() {
   const grid = document.getElementById('links-grid');
   grid.innerHTML = '';
-
   if (links.length === 0) {
     grid.innerHTML = `<div class="empty-state"><span>✦</span>No links yet.</div>`;
     return;
   }
-
   links.forEach(link => {
     const faviconUrl = getFaviconUrl(link.url);
-
     const a = document.createElement('a');
     a.className = 'link-item';
     a.href = link.url;
@@ -347,41 +431,33 @@ function renderLinks() {
       <span class="link-name">${escapeHtml(link.name)}</span>
       <span class="link-arrow">↗</span>
       <button class="link-delete" aria-label="Delete link" title="Remove link">✕</button>`;
-
     a.querySelector('.link-delete').addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       deleteLink(link.id);
     });
-
     grid.appendChild(a);
   });
 }
 
 function deleteLink(id) {
   links = links.filter(l => l.id !== id);
-  saveLinks();
-  renderLinks();
+  saveLinks(); renderLinks();
 }
 
-// Add link modal
 const linkModal     = document.getElementById('link-modal');
 const linkNameInput = document.getElementById('link-name-input');
 const linkUrlInput  = document.getElementById('link-url-input');
 
 document.getElementById('btn-add-link').addEventListener('click', () => {
-  linkNameInput.value = '';
-  linkUrlInput.value  = '';
+  linkNameInput.value = ''; linkUrlInput.value = '';
   linkModal.classList.add('open');
   linkModal.setAttribute('aria-hidden', 'false');
-  setTimeout(() => linkNameInput.focus(), 100);
+  setTimeout(() => linkNameInput.focus(), 80);
 });
-
 function closeLinkModal() {
   linkModal.classList.remove('open');
   linkModal.setAttribute('aria-hidden', 'true');
 }
-
 document.getElementById('btn-cancel-link').addEventListener('click', closeLinkModal);
 document.getElementById('btn-save-link').addEventListener('click', () => {
   const name = linkNameInput.value.trim();
@@ -389,9 +465,7 @@ document.getElementById('btn-save-link').addEventListener('click', () => {
   if (!name || !url) return;
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   links.push({ id: generateId(), name, url });
-  saveLinks();
-  renderLinks();
-  closeLinkModal();
+  saveLinks(); renderLinks(); closeLinkModal();
 });
 linkUrlInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-save-link').click();
