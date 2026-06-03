@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus — Your Daily Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="grain"></div>
+
+  <!-- HEADER: Greeting + Clock -->
+  <header class="header">
+    <div class="header-left">
+      <p class="greeting" id="greeting">Good morning</p>
+      <h1 class="date-display" id="date-display">—</h1>
+    </div>
+    <div class="clock-block">
+      <span class="clock" id="clock">00:00</span>
+      <span class="clock-seconds" id="clock-seconds">00</span>
+    </div>
+  </header>
+
+  <main class="main-grid">
+
+    <!-- FOCUS TIMER -->
+    <section class="card card--timer">
+      <div class="card-label">Focus Timer</div>
+      <div class="timer-ring-wrap">
+        <svg class="timer-ring" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="88" />
+          <circle class="ring-progress" id="ring-progress" cx="100" cy="100" r="88" />
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-display" id="timer-display">25:00</div>
+          <div class="timer-label" id="timer-status">Ready</div>
+        </div>
+      </div>
+      <div class="timer-controls">
+        <button class="btn btn--primary" id="btn-start">Start</button>
+        <button class="btn btn--ghost" id="btn-reset">Reset</button>
+      </div>
+      <div class="timer-presets">
+        <button class="preset-btn active" data-minutes="25">25 min</button>
+        <button class="preset-btn" data-minutes="15">15 min</button>
+        <button class="preset-btn" data-minutes="5">5 min</button>
+      </div>
+    </section>
+
+    <!-- TO-DO LIST -->
+    <section class="card card--todo">
+      <div class="card-label">Tasks</div>
+      <div class="todo-input-row">
+        <input
+          type="text"
+          class="todo-input"
+          id="todo-input"
+          placeholder="Add a new task…"
+          maxlength="120"
+        />
+        <button class="btn btn--add" id="btn-add-task" aria-label="Add task">+</button>
+      </div>
+      <ul class="todo-list" id="todo-list"></ul>
+      <div class="todo-footer">
+        <span class="todo-count" id="todo-count">0 tasks</span>
+        <button class="clear-done-btn" id="btn-clear-done">Clear done</button>
+      </div>
+    </section>
+
+    <!-- QUICK LINKS -->
+    <section class="card card--links">
+      <div class="card-label">Quick Links</div>
+      <div class="links-grid" id="links-grid"></div>
+      <button class="btn btn--ghost btn--full" id="btn-add-link">+ Add Link</button>
+    </section>
+
+  </main>
+
+  <!-- EDIT TASK MODAL -->
+  <div class="modal-overlay" id="edit-modal" aria-hidden="true">
+    <div class="modal">
+      <h3 class="modal-title">Edit Task</h3>
+      <input type="text" class="modal-input" id="edit-task-input" maxlength="120" />
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="btn-cancel-edit">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-edit">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD LINK MODAL -->
+  <div class="modal-overlay" id="link-modal" aria-hidden="true">
+    <div class="modal">
+      <h3 class="modal-title">Add Quick Link</h3>
+      <input type="text" class="modal-input" id="link-name-input" placeholder="Label (e.g. GitHub)" maxlength="30" />
+      <input type="url" class="modal-input" id="link-url-input" placeholder="https://…" style="margin-top:10px" />
+      <div class="modal-actions">
+        <button class="btn btn--ghost" id="btn-cancel-link">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-link">Add Link</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
