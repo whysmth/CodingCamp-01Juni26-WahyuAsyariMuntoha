@@ -400,43 +400,6 @@ body {
 /* ---------- To-Do ---------- */
 .card--todo { display: flex; flex-direction: column; }
 
-.todo-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.sort-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.sort-label {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-right: 2px;
-}
-
-.sort-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  padding: 4px 7px;
-  cursor: pointer;
-  transition: all 0.18s;
-  line-height: 1;
-}
-.sort-btn:hover { border-color: var(--amber); color: var(--amber); }
-.sort-btn.active { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
-
 .todo-input-row {
   display: flex;
   gap: 10px;
@@ -697,6 +660,65 @@ body {
   gap: 6px; text-align: center;
 }
 .empty-state span { font-size: 1.5rem; opacity: 0.4; }
+
+/* ---------- Drag and Drop ---------- */
+.todo-item[draggable="true"],
+.link-item[draggable="true"] {
+  cursor: grab;
+}
+.todo-item[draggable="true"]:active,
+.link-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  min-width: 16px;
+  color: var(--text-muted);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-size: 0.75rem;
+  line-height: 1;
+  user-select: none;
+}
+.todo-item:hover .drag-handle,
+.link-item:hover .drag-handle {
+  opacity: 1;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* Item being dragged */
+.dragging {
+  opacity: 0.35;
+  background: var(--amber-dim) !important;
+  border-color: var(--amber) !important;
+  box-shadow: 0 0 0 2px var(--amber) !important;
+}
+
+/* Drop indicator line */
+.drag-over-above {
+  border-top: 2px solid var(--amber) !important;
+  margin-top: -1px;
+}
+.drag-over-below {
+  border-bottom: 2px solid var(--amber) !important;
+  margin-bottom: -1px;
+}
+
+/* Disable text selection while dragging */
+.todo-list.is-dragging *,
+.links-grid.is-dragging * {
+  user-select: none;
+  pointer-events: none;
+}
+.todo-list.is-dragging .dragging,
+.links-grid.is-dragging .dragging {
+  pointer-events: auto;
+}
 
 /* ---------- Timer Glow Pulse ---------- */
 @keyframes pulseGlow {

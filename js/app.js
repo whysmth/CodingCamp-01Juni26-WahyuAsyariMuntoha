@@ -1,7 +1,7 @@
 /* ============================================================
    FOCUS DASHBOARD — app.js
-   Features: Clock, Timer, To-Do (+ sort), Quick Links,
-             Light/Dark Mode, Custom Name
+   Features: Clock, Timer, To-Do (+ drag), Quick Links
+             (+ drag), Light/Dark Mode, Custom Name
    ============================================================ */
 
 /* ──────────────────────────────────────────
@@ -228,14 +228,12 @@ if ('Notification' in window && Notification.permission === 'default') {
 
 
 /* ──────────────────────────────────────────
-   3. TO-DO LIST  (with sort)
+   3. TO-DO LIST
 ────────────────────────────────────────── */
 const TODO_KEY  = 'focus_todos';
-const SORT_KEY  = 'focus_sort';
 
 let todos     = loadTodos();
 let editingId = null;
-let sortMode  = localStorage.getItem(SORT_KEY) || 'default';
 
 function loadTodos() {
   try { return JSON.parse(localStorage.getItem(TODO_KEY)) || []; }
@@ -247,27 +245,20 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-function getSortedTodos() {
-  const copy = [...todos];
-  if (sortMode === 'az')   return copy.sort((a,b) => a.text.localeCompare(b.text));
-  if (sortMode === 'za')   return copy.sort((a,b) => b.text.localeCompare(a.text));
-  if (sortMode === 'done') return copy.sort((a,b) => Number(a.done) - Number(b.done));
-  return copy; // 'default' = insertion order
-}
-
 function renderTodos() {
-  const list    = document.getElementById('todo-list');
-  const sorted  = getSortedTodos();
+  const list = document.getElementById('todo-list');
   list.innerHTML = '';
 
-  if (sorted.length === 0) {
+  if (todos.length === 0) {
     list.innerHTML = `<div class="empty-state"><span>✦</span>No tasks yet. Add one above.</div>`;
   } else {
-    sorted.forEach(todo => {
+    todos.forEach(todo => {
       const li = document.createElement('li');
       li.className = `todo-item${todo.done ? ' done' : ''}`;
       li.dataset.id = todo.id;
+      li.setAttribute('draggable', 'true');
       li.innerHTML = `
+        <span class="drag-handle" aria-hidden="true">⠿</span>
         <button class="todo-check" aria-label="Toggle done"></button>
         <span class="todo-text">${escapeHtml(todo.text)}</span>
         <div class="todo-actions">
@@ -279,8 +270,81 @@ function renderTodos() {
       li.querySelector('.icon-btn.delete').addEventListener('click', () => deleteTodo(todo.id));
       list.appendChild(li);
     });
+    initTodoDnD(list);
   }
   updateTodoCount();
+}
+
+/* ──────────────────────────────────────────
+   DRAG AND DROP — To-Do List
+────────────────────────────────────────── */
+function initTodoDnD(list) {
+  let dragSrc = null;
+
+  list.querySelectorAll('.todo-item[draggable]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      // Defer adding class so browser can snapshot the element first
+      requestAnimationFrame(() => item.classList.add('dragging'));
+      list.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.dataset.id);
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.classList.remove('is-dragging');
+      list.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+        el.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      dragSrc = null;
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!dragSrc || item === dragSrc) return;
+      e.dataTransfer.dropEffect = 'move';
+
+      const rect   = item.getBoundingClientRect();
+      const isAbove = e.clientY < rect.top + rect.height / 2;
+
+      list.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+        el.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      item.classList.add(isAbove ? 'drag-over-above' : 'drag-over-below');
+    });
+
+    item.addEventListener('dragleave', e => {
+      // Only remove class if leaving to outside the item entirely
+      if (!item.contains(e.relatedTarget)) {
+        item.classList.remove('drag-over-above', 'drag-over-below');
+      }
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || item === dragSrc) return;
+
+      const rect    = item.getBoundingClientRect();
+      const isAbove = e.clientY < rect.top + rect.height / 2;
+
+      const srcId = dragSrc.dataset.id;
+      const tgtId = item.dataset.id;
+
+      const srcIdx = todos.findIndex(t => t.id === srcId);
+      const tgtIdx = todos.findIndex(t => t.id === tgtId);
+      if (srcIdx === -1 || tgtIdx === -1) return;
+
+      // Remove source item
+      const [moved] = todos.splice(srcIdx, 1);
+      // Find target index after removal, then insert before or after
+      const newTgtIdx = todos.findIndex(t => t.id === tgtId);
+      todos.splice(isAbove ? newTgtIdx : newTgtIdx + 1, 0, moved);
+
+      saveTodos();
+      renderTodos();
+    });
+  });
 }
 
 function updateTodoCount() {
@@ -325,24 +389,6 @@ document.getElementById('btn-clear-done').addEventListener('click', () => {
   todos = todos.filter(t => !t.done);
   saveTodos(); renderTodos();
 });
-
-// Sort buttons
-function applySortUI() {
-  document.querySelectorAll('.sort-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.sort === sortMode);
-  });
-}
-
-document.querySelectorAll('.sort-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    sortMode = btn.dataset.sort;
-    localStorage.setItem(SORT_KEY, sortMode);
-    applySortUI();
-    renderTodos();
-  });
-});
-
-applySortUI();
 
 // Edit modal
 const editModal     = document.getElementById('edit-modal');
@@ -422,7 +468,9 @@ function renderLinks() {
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.dataset.id = link.id;
+    a.setAttribute('draggable', 'true');
     a.innerHTML = `
+      <span class="drag-handle" aria-hidden="true">⠿</span>
       <div class="link-favicon">
         ${faviconUrl
           ? `<img src="${faviconUrl}" alt="" onerror="this.style.display='none'" />`
@@ -436,6 +484,75 @@ function renderLinks() {
       deleteLink(link.id);
     });
     grid.appendChild(a);
+  });
+  initLinksDnD(grid);
+}
+
+/* ──────────────────────────────────────────
+   DRAG AND DROP — Quick Links
+────────────────────────────────────────── */
+function initLinksDnD(grid) {
+  let dragSrc = null;
+
+  grid.querySelectorAll('.link-item[draggable]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      requestAnimationFrame(() => item.classList.add('dragging'));
+      grid.classList.add('is-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.dataset.id);
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      grid.classList.remove('is-dragging');
+      grid.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+        el.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      dragSrc = null;
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!dragSrc || item === dragSrc) return;
+      e.dataTransfer.dropEffect = 'move';
+
+      const rect    = item.getBoundingClientRect();
+      const isAbove = e.clientY < rect.top + rect.height / 2;
+
+      grid.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+        el.classList.remove('drag-over-above', 'drag-over-below');
+      });
+      item.classList.add(isAbove ? 'drag-over-above' : 'drag-over-below');
+    });
+
+    item.addEventListener('dragleave', e => {
+      if (!item.contains(e.relatedTarget)) {
+        item.classList.remove('drag-over-above', 'drag-over-below');
+      }
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || item === dragSrc) return;
+
+      const rect    = item.getBoundingClientRect();
+      const isAbove = e.clientY < rect.top + rect.height / 2;
+
+      const srcId = dragSrc.dataset.id;
+      const tgtId = item.dataset.id;
+
+      const srcIdx = links.findIndex(l => l.id === srcId);
+      const tgtIdx = links.findIndex(l => l.id === tgtId);
+      if (srcIdx === -1 || tgtIdx === -1) return;
+
+      const [moved] = links.splice(srcIdx, 1);
+      const newTgtIdx = links.findIndex(l => l.id === tgtId);
+      links.splice(isAbove ? newTgtIdx : newTgtIdx + 1, 0, moved);
+
+      saveLinks();
+      renderLinks();
+    });
   });
 }
 
