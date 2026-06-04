@@ -713,11 +713,6 @@ body {
 .todo-list.is-dragging *,
 .links-grid.is-dragging * {
   user-select: none;
-  pointer-events: none;
-}
-.todo-list.is-dragging .dragging,
-.links-grid.is-dragging .dragging {
-  pointer-events: auto;
 }
 
 /* ---------- Timer Glow Pulse ---------- */
